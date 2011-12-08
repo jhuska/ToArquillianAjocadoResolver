@@ -1,5 +1,10 @@
 Fixes imports and other API changes between Richfaces Selenium and Arquillian Ajocado
 
+Note that it does not fix everything, but the mojority of imports problems, now you have to go through files which are excluded
+from automatic fixing, and fix them manually.
+
+Hope it helps somehow.
+
 USAGE
 =====
 
