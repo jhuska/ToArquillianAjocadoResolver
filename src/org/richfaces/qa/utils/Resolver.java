@@ -29,7 +29,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.HashMap;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -45,7 +47,7 @@ public class Resolver {
 	private final static String EOL = System.getProperty("line.separator");
 	
 	// key is the richfaces-selenium stuff and the value is the Ajocado stuff
-	private final static Map<String, String> FIXES_WHOLE_LINES = new HashMap<String, String>() {
+	private final static Map<String, String> FIXES_WHOLE_LINES = new LinkedHashMap<String, String>() {
 
 		private static final long serialVersionUID = 1L;
 
@@ -70,6 +72,7 @@ public class Resolver {
 			put("import static org.jboss.test.selenium.dom.Event.*;", "import static org.jboss.arquillian.ajocado.dom.Event.*;");
 			put("import static org.jboss.test.selenium.utils.text.SimplifiedFormat.format;", "import static org.jboss.arquillian.ajocado.format.SimplifiedFormat.format;");
 			put("import org.jboss.test.selenium.SystemProperties;", "");
+			put("import static org.jboss.test.selenium.SystemProperties.isSeleniumDebug;", "import org.jboss.arquillian.ajocado.framework.AjocadoConfigurationContext;");
 			put("import org.jboss.test.selenium.request.RequestType;", "import org.jboss.arquillian.ajocado.request.RequestType;");
 			put("URL contextPath = SystemProperties.getContextPath();", "");
 			put("import org.jboss.test.selenium.waiting.retrievers.TextRetriever;","import org.jboss.arquillian.ajocado.waiting.retrievers.TextRetriever;");
@@ -106,10 +109,28 @@ public class Resolver {
 			put("import org.jboss.test.selenium.geometry.Dimension;", "import org.jboss.arquillian.ajocado.geometry.Dimension;");
 			put("import org.jboss.test.selenium.utils.text.SimplifiedFormat;", "import org.jboss.arquillian.ajocado.format.SimplifiedFormat;");
 			put("import org.jboss.test.selenium.waiting.retrievers.AttributeRetriever;", "import org.jboss.arquillian.ajocado.waiting.retrievers.AttributeRetriever;");
+			put("import org.jboss.test.selenium.waiting.retrievers.RetrieverFactory;", "import org.jboss.arquillian.ajocado.waiting.retrievers.TextRetriever;");
+			put("import static org.jboss.test.selenium.locator.Attribute.TITLE;", "import static org.jboss.arquillian.ajocado.dom.Attribute.TITLE;");
+			put("import static org.jboss.test.selenium.waiting.WaitFactory.WAIT_AJAX;", "");
+			put("import static org.jboss.test.selenium.waiting.retrievers.RetrieverFactory.RETRIEVE_TEXT;", "");
+			put("import static org.jboss.test.selenium.waiting.retrievers.RetrieverFactory.RETRIEVE_ATTRIBUTE;", "");
+			put("import org.jboss.test.selenium.locator.option.OptionLocator;", "import org.jboss.arquillian.ajocado.locator.option.OptionLocator;");
+			put("import static org.jboss.test.selenium.locator.Attribute.VALUE;", "import static org.jboss.arquillian.ajocado.dom.Attribute.VALUE;");
+			put("import org.jboss.test.selenium.interception.CommandContext;", "import org.jboss.arquillian.ajocado.command.CommandContext;");
+			put("import org.jboss.test.selenium.interception.CommandInterceptionException;", "import org.jboss.arquillian.ajocado.command.CommandInterceptorException;");
+			put("import org.jboss.test.selenium.interception.CommandInterceptor;", "import org.jboss.arquillian.ajocado.command.CommandInterceptor;");
+			put("import org.jboss.test.selenium.locator.LocatorFactory;", "import org.jboss.arquillian.ajocado.locator.LocatorFactory;");
+			put("import org.jboss.test.selenium.locator.option.OptionLabelLocator;", "import org.jboss.arquillian.ajocado.locator.option.OptionLabelLocator;");
+			put("import org.jboss.test.selenium.waiting.Wait;", "");
+			put("import static org.jboss.test.selenium.waiting.Wait.waitAjax;", "");
+			put("import org.jboss.test.selenium.waiting.conditions.IsDisplayed;", "");
+			put("waitAjax().dontFail().interval(50).timeout(2000).until(IsDisplayed.getInstance().locator(this));", "waitAjax.dontFail().interval(50).timeout(2000).until(elementVisible.locator(this));");
+			put("assertNotEquals(statusAfter, statusBefore, \"The status attribute doesn't work.\");", "assertFalse(statusAfter.equals(statusBefore), \"The status attribute doesn't work.\");");
+			put("import static org.testng.Assert.assertNotEquals;", "");
 		}
 	};
 	
-	private final static Map<String, String> FIXES_WORDS = new HashMap<String, String>() {
+	private final static Map<String, String> FIXES_WORDS = new LinkedHashMap<String, String>() {
 		
 		private static final long serialVersionUID = 2L;
 
@@ -120,6 +141,8 @@ public class Resolver {
 			put("import static org.jboss.test.selenium.utils.PrimitiveUtils", "import static org.jboss.arquillian.ajocado.utils.PrimitiveUtils");
 			put(".getRequestInterceptor().clearRequestTypeDone();", ".getRequestGuard().clearRequestDone();");
 			put(".getRequestInterceptor().waitForRequestTypeChange()", ".getRequestGuard().waitForRequest();");
+			put("SystemProperties.isSeleniumDebug()", "AjocadoConfigurationContext.getProxy().isSeleniumDebug()");
+			put("isSeleniumDebug()", "AjocadoConfigurationContext.getProxy().isSeleniumDebug()");
 			put("seleniumDebug", "AjocadoConfigurationContext.getProxy().isSeleniumDebug()");
 			put(".getNthOccurence", ".get");
 			put("waitXhr(selenium)", " guard(selenium, RequestType.XHR)");
@@ -129,12 +152,29 @@ public class Resolver {
 			put("isNotDisplayed.", "elementNotVisible.");
 			put(".getRequestInterceptor().getRequestTypeDone()", ".getRequestGuard().getRequestDone()");
 			put("FrameLocator.PARENT", "FrameRelativeLocator.PARENT");
-			put("private FrameLocator frameLocator = new FrameLocator(\"jquery=iframe\");", "//private FrameLocator frameLocator = new FrameLocator(\"jquery=iframe:eq(0)\");" + EOL + "    private FrameIndexLocator frameLocator = new FrameIndexLocator(0);");
+			put("private FrameLocator frameLocator = new FrameLocator(\"jquery=iframe:eq(0)\");", "//private FrameLocator frameLocator = new FrameLocator(\"jquery=iframe:eq(0)\");" + EOL + "    private FrameIndexLocator frameLocator = new FrameIndexLocator(0);");
 			put("\"\\\\40\"", "KeyCode.DOWN_ARROW");
 			put(".getAllOccurrences()", ".iterator()");
+			put("RetrieverFactory.RETRIEVE_TEXT", "TextRetriever.getInstance()");
+			put("phasesItems.getNthChildElement(i)", "jq(SimplifiedFormat.format(\"{0}:nth-child({1})\", phasesItems.getRawLocator(), i))");
+			put("RETRIEVE_TEXT.", "retrieveText.");
+			put("RETRIEVE_ATTRIBUTE.", "retrieveAttribute.");
+			put("WAIT_AJAX.", "waitAjax.");
+			put("AjaxSeleniumProxy.getInstance();", "AjaxSeleniumContext.getProxy();");
+			put("Wait.waitAjax()", "waitAjax");
+			put(".getInterceptionProxy()", ".getCommandInterceptionProxy()");
+			put("CommandInterceptionException", "CommandInterceptorException");
+			put("new FrameLocator(\"relative=top\")", "FrameRelativeLocator.TOP");
+			put("IsDisplayed.getInstance()", "elementVisible");
 		}
 	};
-
+	
+	private static final String[] DO_NOT_FIX_FILES = {"AbstractModel", "AbstractMetamerTest", "MatrixConfigurator", 
+		"MetamerConsoleStatusTestListener", "CollapsibleSubTable", "DataGrid", "DataTable", "ExtendedDataTable", "OrderingList",
+		"PanelMenu", "ListModel", "AbstractTreeNodeModel", "ModelIterable",
+		"MetamerFailureLoggingTestListener", "MetamerProperties", "MetamerSeleniumLoggingTestListener", "MetamerTestInfo", 
+		"ColumnModel", "Autocomplete"};
+	
 	//Fields
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private static File outPutDir = new File("ftest");
@@ -162,21 +202,21 @@ public class Resolver {
 		}
 
 		File[] allFiles = topLevelDir.listFiles();
-		String currentDirBackup = currentDir;
-
+		String currentDirBackup = new String(currentDir);
+		
 		for (File i : allFiles) {
-
-			if (i.isDirectory()) {
-
+			
+			if (i.isDirectory() & !(i.getName().equals(".svn")) ) {
+				
 				File dir = new File(currentDirBackup
 						+ System.getProperty("file.separator") + i.getName());
 				dir.mkdir();
 				currentDir = dir.getAbsolutePath();
 
 				recursiveResolve(i, currentDir);
-			} else if ( willBeThisFileFixed(i.getName()) ) {
-
-				fixTheImportsEtc(i, currentDir);
+			} else if ( !(i.isDirectory()) && willBeThisFileFixed(i.getName()) ) {
+				
+				fixTheImportsEtc(i, currentDirBackup);
 				countOfTests++;
 			}
 		}
@@ -184,22 +224,13 @@ public class Resolver {
 	
 	private static boolean willBeThisFileFixed(String filename) {
 		
-		boolean result = false;
-		
-		if( filename.startsWith("Test")) {
-			result = true;
-		}
-		
-		if( filename.startsWith("Abstrac")) {
-			result = true;
-		}
-		
-		if( filename.contains("Metamer")) {
-			result = false;
-		}
-		
-		if( filename.contains("AbstractModel")) {
-			result = false;
+		boolean result = true;
+
+		for( String i : DO_NOT_FIX_FILES ) {
+			
+			if( (filename).equals(i + ".java")) {
+				result = false;
+			}
 		}
 		
 		return result;
@@ -236,17 +267,45 @@ public class Resolver {
 
 		String newLine = fixNonTrivialThingsWhichCanNotBeFixedBySimpleReplacing(line); 
 		
-		for(String i : FIXES_WHOLE_LINES.keySet()) {
+		Collection<String> c = FIXES_WHOLE_LINES.keySet();
+		Iterator<String> i = c.iterator();
+		
+		while(i.hasNext()) {
+			
+			String key = i.next();
+			if ((line.trim()).equals(key.trim())) { 
+				
+				newLine = FIXES_WHOLE_LINES.get(key);
+				break;
+			}
+			
+		}
+		
+		Collection<String> words = FIXES_WORDS.keySet();
+		Iterator<String> j = words.iterator();
+		
+		while(j.hasNext()) {
+			
+			String key = j.next();
+			if( (newLine.trim()).contains(key.trim()) ) {
+				
+				newLine = line.replace(key, FIXES_WORDS.get(key));
+				break;
+			}
+				
+		}
+		
+		/*for(String i : FIXES_WHOLE_LINES.keySet()) {
 			
 			if ((line.trim()).contains(i.trim())) 
 				newLine = FIXES_WHOLE_LINES.get(i);
-		}
+		}*/
 		
-		for(String j : FIXES_WORDS.keySet()) {
+		/*for(String j : FIXES_WORDS.keySet()) {
 			
 			if( (line.trim()).contains(j.trim()) ) 
 				newLine = line.replace(j, FIXES_WORDS.get(j));
-		}
+		}*/
 		
 		return (newLine + EOL);
 	}
@@ -274,6 +333,21 @@ public class Resolver {
 		
 		return newLine;
 	}
+	
+	private static boolean deleteNonEmptyDirectory(File path) {
+		 if( path.exists() ) {
+		      File[] files = path.listFiles();
+		      for(int i=0; i<files.length; i++) {
+		         if(files[i].isDirectory()) {
+		        	 deleteNonEmptyDirectory(files[i]);
+		         }
+		         else {
+		           files[i].delete();
+		         }
+		      }
+		    }
+		    return( path.delete() );
+	}
 
 	public static void main(String[] args) {
 
@@ -283,9 +357,9 @@ public class Resolver {
 		}
 
 		if(outPutDir.exists()) {
-			outPutDir.delete();
+			boolean result = deleteNonEmptyDirectory(outPutDir);
+			System.out.println("The existing output directory was " + (result ? "deleted!" : " not deleted!"));
 		}
-		
 		outPutDir.mkdir();
 
 		try {
