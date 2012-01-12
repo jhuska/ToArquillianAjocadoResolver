@@ -30,9 +30,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:jhuska@redhat.com">Juraj Huska</a>
@@ -42,7 +44,8 @@ public class Resolver {
 	// Contstants
 	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private final static String ERROR_MSG_PATH = "USAGE: You should provide path, which has to point to the tests source top level directory, "
-			+ "e.g. in metamer case: src/test/java/org/richfaces/tests/metamer/ftest";
+			+ "e.g. in metamer case: src/test/java/org/richfaces/tests/metamer/ftest and also true/false to determine whether you want to fix whole test suite" +
+			" or just some chosen files respectively";
 
 	private final static String EOL = System.getProperty("line.separator");
 
@@ -276,7 +279,24 @@ public class Resolver {
 			"PanelMenu", "ListModel", "AbstractTreeNodeModel", "ModelIterable",
 			"MetamerFailureLoggingTestListener", "MetamerProperties",
 			"MetamerSeleniumLoggingTestListener", "MetamerTestInfo",
-			"ColumnModel", "Autocomplete"};
+			"ColumnModel", "Autocomplete" };
+	
+	private static final Set<String> DO_FIX_FILES = new HashSet<String>() {
+        
+		private static final long serialVersionUID = 13234234;
+
+		{
+        	add("TestPanelMenuGroupClientSideHandlers");
+        	add("TestRichHotKeyAttributes");
+        	add("TestRichHotKey");
+        	add("HotKeyAttributes");
+        	add("AbstractRichHotKeyTest");
+        	add("TestRichCollapsiblePanel");
+        	add("TestRichMessagesJSR303");
+        	add("TestRichMessagesJSFValidator");
+        	add("TestRichMessagesCSV");
+		}
+	};
 
 	// Fields
 	// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -286,17 +306,17 @@ public class Resolver {
 
 	// Static Methods
 	// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	private static boolean resolve(String pathToTopLevelDirectoryOfTestSuite)
+	private static boolean resolve(String pathToTopLevelDirectoryOfTestSuite, boolean fixEverything )
 			throws IOException {
 
 		File topLevelDir = new File(pathToTopLevelDirectoryOfTestSuite);
 
-		recursiveResolve(topLevelDir, outPutDir.getAbsolutePath());
+		recursiveResolve(topLevelDir, outPutDir.getAbsolutePath(), fixEverything );
 
 		return false;
 	}
 
-	private static void recursiveResolve(File topLevelDir, String currentDir)
+	private static void recursiveResolve(File topLevelDir, String currentDir, boolean fixEverything)
 			throws IOException {
 
 		if (!topLevelDir.isDirectory()) {
@@ -316,8 +336,8 @@ public class Resolver {
 				dir.mkdir();
 				currentDir = dir.getAbsolutePath();
 
-				recursiveResolve(i, currentDir);
-			} else if (!(i.isDirectory()) && willBeThisFileFixed(i.getName())) {
+				recursiveResolve(i, currentDir, fixEverything);
+			} else if (!(i.isDirectory()) && willBeThisFileFixed(i.getName(), fixEverything ) ) {
 
 				fixTheImportsEtc(i, currentDirBackup);
 				countOfTests++;
@@ -325,13 +345,23 @@ public class Resolver {
 		}
 	}
 
-	private static boolean willBeThisFileFixed(String filename) {
+	private static boolean willBeThisFileFixed(String filename,
+			boolean fixEverything) {
 
 		boolean result = true;
 
-		for (String i : DO_NOT_FIX_FILES) {
+		filename = filename.substring( 0, filename.indexOf(".") );
+		
+		if (fixEverything) {
+			for (String i : DO_NOT_FIX_FILES) {
 
-			if ((filename).equals(i + ".java")) {
+				if ( filename.equals(i) ) {
+					result = false;
+				}
+			}
+		} else {
+			
+			if( !DO_FIX_FILES.contains(filename) ) {
 				result = false;
 			}
 		}
@@ -423,7 +453,7 @@ public class Resolver {
 		if (line.indexOf("keyPress(") != -1) {
 
 			if (line.indexOf("String.valueOf") != -1) {
-				
+
 				newLine = fixKeyPressNative(line);
 
 			} else if ((line.indexOf("\")") != -1)
@@ -432,13 +462,13 @@ public class Resolver {
 				newLine = newLine.replace("\"", "\'");
 			}
 		} else if ((line.indexOf(".keyPressNative(") != -1)) {
-			newLine =  fixKeyPressNative(line);
-		} else if( line.indexOf(".keyDownNative(") != -1 ) {
-			newLine =  fixKeyPressNative(line);
-		} else if( line.indexOf(".keyUpNative(") != -1 ) {
-			newLine =  fixKeyPressNative(line);
+			newLine = fixKeyPressNative(line);
+		} else if (line.indexOf(".keyDownNative(") != -1) {
+			newLine = fixKeyPressNative(line);
+		} else if (line.indexOf(".keyUpNative(") != -1) {
+			newLine = fixKeyPressNative(line);
 		}
-			
+
 		return newLine;
 	}
 
@@ -452,7 +482,7 @@ public class Resolver {
 			newLine = newLine.replace("))", ")");
 			newLine = newLine.replace(") )", ")");
 		} else {
-			
+
 			newLine = newLine.replace("\"", "");
 		}
 
@@ -475,7 +505,7 @@ public class Resolver {
 
 	public static void main(String[] args) {
 
-		if (args.length != 1) {
+		if (args.length != 2) {
 
 			throw new IllegalArgumentException(ERROR_MSG_PATH);
 		}
@@ -488,7 +518,7 @@ public class Resolver {
 		outPutDir.mkdir();
 
 		try {
-			resolve(args[0]);
+			resolve( args[0], Boolean.valueOf( args[1] ) );
 		} catch (Exception ex) {
 
 			throw new RuntimeException("An error occured during migration!", ex);
